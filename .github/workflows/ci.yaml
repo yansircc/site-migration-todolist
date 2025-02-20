@@ -5,13 +5,13 @@ on:
     branches: [main, develop]
     # Only trigger on relevant file changes
     paths:
-      - '**.js'
-      - '**.jsx'
-      - '**.ts'
-      - '**.tsx'
-      - 'package.json'
-      - 'bun.lockb'
-      - '.github/workflows/**'
+      - "**.js"
+      - "**.jsx"
+      - "**.ts"
+      - "**.tsx"
+      - "package.json"
+      - "bun.lockb"
+      - ".github/workflows/**"
   pull_request:
     branches: [main, develop]
 
@@ -23,9 +23,15 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  NEXT_TELEMETRY_DISABLED: 1
+  KV_URL: ${{ secrets.KV_URL }}
+  KV_TOKEN: ${{ secrets.KV_TOKEN }}
+
 jobs:
   check:
     runs-on: ubuntu-latest
+    environment: production
 
     steps:
       - name: 📥 Checkout
@@ -63,8 +69,6 @@ jobs:
           wait
 
       - name: 🏗️ Build
-        env:
-          NEXT_TELEMETRY_DISABLED: 1
         run: bun run build
 
       - name: 📊 Generate build report
