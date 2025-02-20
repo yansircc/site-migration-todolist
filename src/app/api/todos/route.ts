@@ -4,8 +4,8 @@ import type { TodoMap } from "@/types/todo";
 import { NextResponse } from "next/server";
 
 const redis = new Redis({
-  url: env.KV_URL,
-  token: env.KV_TOKEN,
+  url: env.UPSTASH_REDIS_REST_URL,
+  token: env.UPSTASH_REDIS_REST_TOKEN,
 });
 
 export async function GET() {

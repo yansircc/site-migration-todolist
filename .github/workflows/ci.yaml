@@ -25,8 +25,8 @@ permissions:
 
 env:
   NEXT_TELEMETRY_DISABLED: 1
-  KV_URL: ${{ secrets.KV_URL }}
-  KV_TOKEN: ${{ secrets.KV_TOKEN }}
+  UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+  UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
 
 jobs:
   check:
