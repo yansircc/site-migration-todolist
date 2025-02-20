@@ -3,7 +3,6 @@
 import * as React from "react";
 import { ArrowRight, Pencil } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { cn } from "@/lib/utils";
 
 interface UrlInputDialogProps {
   originalUrl: string;
