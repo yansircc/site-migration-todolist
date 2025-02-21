@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { UserAvatar } from "./user-avatar";
 import { ProgressBar } from "./progress-bar";
 import { UrlInputDialog } from "./url-input-dialog";
-import { SettingsDialog } from "./settings-dialog";
-import type { TodoItem, TodoMap, TodoStatus, UrlSettings } from "@/types/todo";
+import type { TodoItem, TodoStatus } from "@/types/todo";
 import { cn } from "@/lib/utils";
 import { AlertCircle } from "lucide-react";
+import { useTodoStore } from "@/store/todo";
 
 const statusColors: Record<TodoStatus, string> = {
   completed: "bg-green-50 text-green-700 border-green-200",
@@ -51,152 +51,39 @@ const item = {
   show: { opacity: 1, y: 0 },
 };
 
-function checkNeeds301(originalUrl: string, migratedUrl: string): boolean {
-  const normalizeUrl = (url: string) => {
-    try {
-      const urlObj = new URL(url);
-      // Remove trailing slashes and normalize the path
-      const path = urlObj.pathname.replace(/\/+$/, ""); // Remove trailing slashes
-      return path;
-    } catch {
-      // If not a valid URL, just clean the string
-      return url.replace(/\/+$/, "");
-    }
-  };
-
-  const getBasePath = (path: string) => {
-    // Remove trailing slashes and get the final segment
-    return path.replace(/\/+$/, "").split("/").pop() ?? "";
-  };
-
-  const originalPath = normalizeUrl(originalUrl);
-  const migratedPath = normalizeUrl(migratedUrl);
-
-  // If paths are exactly the same (ignoring trailing slashes), no 301 needed
-  if (originalPath === migratedPath) {
-    return false;
-  }
-
-  // If only the base paths (final segments) are the same, but full paths differ,
-  // then we need a 301 (e.g., /a vs /post/a)
-  const originalBase = getBasePath(originalPath);
-  const migratedBase = getBasePath(migratedPath);
-
-  // If even the base paths are different, we definitely need a 301
-  return originalBase !== migratedBase || originalPath !== migratedPath;
-}
-
 export function TodoList({ urls, userId, userName }: TodoListProps) {
-  const [todos, setTodos] = useState<TodoMap>({});
-  const [urlSettings, setUrlSettings] = useState<UrlSettings>({
-    source: "https://zetarmold.com",
-    target: "https://google.com",
-  });
+  const {
+    todos,
+    settings,
+    isLoading,
+    error,
+    fetchInitialData,
+    updateTodoStatus,
+    updateMigratedUrl,
+  } = useTodoStore();
 
   useEffect(() => {
-    async function loadData() {
-      try {
-        const [todosResponse, settingsResponse] = await Promise.all([
-          fetch("/api/todos"),
-          fetch("/api/settings"),
-        ]);
+    void fetchInitialData();
+  }, [fetchInitialData]);
 
-        if (!todosResponse.ok) throw new Error("Failed to fetch todos");
-        if (!settingsResponse.ok) throw new Error("Failed to fetch settings");
-
-        const todosData = (await todosResponse.json()) as TodoMap;
-        const settingsData = (await settingsResponse.json()) as UrlSettings;
-
-        setTodos(todosData);
-        setUrlSettings(settingsData);
-      } catch (error) {
-        console.error("Failed to load data:", error);
-      }
-    }
-    void loadData();
-  }, []);
-
-  async function updateSettings(newSettings: UrlSettings) {
-    try {
-      const response = await fetch("/api/settings", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(newSettings),
-      });
-      if (!response.ok) throw new Error("Failed to update settings");
-      setUrlSettings(newSettings);
-    } catch (error) {
-      console.error("Failed to update settings:", error);
-    }
+  if (isLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center rounded-xl border border-gray-100 bg-white/90">
+        <div className="text-sm text-gray-500">Loading...</div>
+      </div>
+    );
   }
 
-  async function updateTodoStatus(url: string, status: TodoStatus) {
-    const newTodos = {
-      ...todos,
-      [url]: {
-        ...todos[url],
-        url,
-        status,
-        assignee: status === "inProgress" ? userId : undefined,
-        updatedAt: Date.now(),
-      },
-    };
-    try {
-      const response = await fetch("/api/todos", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(newTodos),
-      });
-      if (!response.ok) throw new Error("Failed to update todos");
-      setTodos(newTodos);
-    } catch (error) {
-      console.error("Failed to update todo:", error);
-    }
-  }
-
-  async function updateMigratedUrl(originalUrl: string, migratedUrl: string) {
-    const needs301 = checkNeeds301(originalUrl, migratedUrl);
-    const currentTodo = todos[originalUrl] ?? defaultTodo;
-    const newTodos: TodoMap = {
-      ...todos,
-      [originalUrl]: {
-        ...currentTodo,
-        migratedUrl,
-        needs301,
-        updatedAt: Date.now(),
-      },
-    };
-    try {
-      const response = await fetch("/api/todos", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(newTodos),
-      });
-      if (!response.ok) throw new Error("Failed to update todos");
-      setTodos(newTodos);
-    } catch (error) {
-      console.error("Failed to update todo:", error);
-    }
+  if (error) {
+    return (
+      <div className="flex h-64 items-center justify-center rounded-xl border border-red-100 bg-white/90">
+        <div className="text-sm text-red-500">{error}</div>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between rounded-xl border border-gray-100 bg-white/90 p-6">
-        <h2 className="text-lg font-semibold text-gray-900">
-          Migration Progress
-        </h2>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-500">{userName}</span>
-          <SettingsDialog settings={urlSettings} onUpdate={updateSettings} />
-        </div>
-      </div>
-
       <div className="rounded-xl border border-gray-100 bg-white/90 p-6">
         <ProgressBar todos={todos} totalItems={urls.length} />
       </div>
@@ -208,7 +95,7 @@ export function TodoList({ urls, userId, userName }: TodoListProps) {
         className="space-y-3"
       >
         {urls.map((url) => {
-          const todo: TodoItem = {
+          const todo = {
             ...defaultTodo,
             ...todos[url],
             url,
@@ -230,7 +117,11 @@ export function TodoList({ urls, userId, userName }: TodoListProps) {
                     whileTap={{ scale: 0.98 }}
                     value={todo.status}
                     onChange={(e) =>
-                      void updateTodoStatus(url, e.target.value as TodoStatus)
+                      void updateTodoStatus(
+                        url,
+                        e.target.value as TodoStatus,
+                        userId,
+                      )
                     }
                     className={cn(
                       "rounded-lg border px-4 py-2 transition-all",
@@ -250,7 +141,7 @@ export function TodoList({ urls, userId, userName }: TodoListProps) {
                     originalUrl={url}
                     migratedUrl={todo.migratedUrl}
                     onUpdate={(newUrl) => void updateMigratedUrl(url, newUrl)}
-                    baseUrls={urlSettings}
+                    baseUrls={settings}
                   />
 
                   <div className="flex items-center gap-3">

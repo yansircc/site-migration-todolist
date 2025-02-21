@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { urls } from "@/data/urls";
 import { TodoList } from "@/components/todo-list";
 import type { User } from "@/types/todo";
+import { SettingsDialog } from "@/components/settings-dialog";
+import { useTodoStore } from "@/store/todo";
 
 // Generate a unique ID based on timestamp and random number
 function generateUserId() {
@@ -20,7 +22,7 @@ const fadeIn = {
 export default function HomePage() {
   const [user, setUser] = useState<User | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-
+  const { settings, updateSettings } = useTodoStore();
   // Load user from localStorage on initial render
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
@@ -156,6 +158,7 @@ export default function HomePage() {
             >
               Edit Name
             </motion.button>
+            <SettingsDialog settings={settings} onUpdate={updateSettings} />
           </div>
         </motion.div>
         <AnimatePresence mode="wait">
