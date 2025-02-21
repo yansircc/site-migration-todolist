@@ -14,4 +14,9 @@ export interface User {
   id: string;
 }
 
+export interface UrlSettings {
+  source: string;
+  target: string;
+}
+
 export type TodoMap = Record<string, TodoItem>;

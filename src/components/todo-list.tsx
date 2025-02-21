@@ -5,7 +5,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { UserAvatar } from "./user-avatar";
 import { ProgressBar } from "./progress-bar";
 import { UrlInputDialog } from "./url-input-dialog";
-import type { TodoItem, TodoMap, TodoStatus } from "@/types/todo";
+import { SettingsDialog } from "./settings-dialog";
+import type { TodoItem, TodoMap, TodoStatus, UrlSettings } from "@/types/todo";
 import { cn } from "@/lib/utils";
 import { AlertCircle } from "lucide-react";
 
@@ -87,20 +88,49 @@ function checkNeeds301(originalUrl: string, migratedUrl: string): boolean {
 
 export function TodoList({ urls, userId, userName }: TodoListProps) {
   const [todos, setTodos] = useState<TodoMap>({});
+  const [urlSettings, setUrlSettings] = useState<UrlSettings>({
+    source: "https://zetarmold.com",
+    target: "https://google.com",
+  });
 
   useEffect(() => {
-    async function loadTodos() {
+    async function loadData() {
       try {
-        const response = await fetch("/api/todos");
-        if (!response.ok) throw new Error("Failed to fetch todos");
-        const data = (await response.json()) as TodoMap;
-        setTodos(data);
+        const [todosResponse, settingsResponse] = await Promise.all([
+          fetch("/api/todos"),
+          fetch("/api/settings"),
+        ]);
+
+        if (!todosResponse.ok) throw new Error("Failed to fetch todos");
+        if (!settingsResponse.ok) throw new Error("Failed to fetch settings");
+
+        const todosData = (await todosResponse.json()) as TodoMap;
+        const settingsData = (await settingsResponse.json()) as UrlSettings;
+
+        setTodos(todosData);
+        setUrlSettings(settingsData);
       } catch (error) {
-        console.error("Failed to load todos:", error);
+        console.error("Failed to load data:", error);
       }
     }
-    void loadTodos();
+    void loadData();
   }, []);
+
+  async function updateSettings(newSettings: UrlSettings) {
+    try {
+      const response = await fetch("/api/settings", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(newSettings),
+      });
+      if (!response.ok) throw new Error("Failed to update settings");
+      setUrlSettings(newSettings);
+    } catch (error) {
+      console.error("Failed to update settings:", error);
+    }
+  }
 
   async function updateTodoStatus(url: string, status: TodoStatus) {
     const newTodos = {
@@ -157,10 +187,17 @@ export function TodoList({ urls, userId, userName }: TodoListProps) {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border border-gray-100 bg-white/90 p-6">
-        <h2 className="mb-4 text-lg font-semibold text-gray-900">
+      <div className="flex items-center justify-between rounded-xl border border-gray-100 bg-white/90 p-6">
+        <h2 className="text-lg font-semibold text-gray-900">
           Migration Progress
         </h2>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-500">{userName}</span>
+          <SettingsDialog settings={urlSettings} onUpdate={updateSettings} />
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-gray-100 bg-white/90 p-6">
         <ProgressBar todos={todos} totalItems={urls.length} />
       </div>
 
@@ -213,6 +250,7 @@ export function TodoList({ urls, userId, userName }: TodoListProps) {
                     originalUrl={url}
                     migratedUrl={todo.migratedUrl}
                     onUpdate={(newUrl) => void updateMigratedUrl(url, newUrl)}
+                    baseUrls={urlSettings}
                   />
 
                   <div className="flex items-center gap-3">
